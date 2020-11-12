@@ -6,10 +6,16 @@ import h5py
 import cv2
 
 def load_data(img_path,train = True):
+    print("load data")
     gt_path = img_path.replace('.jpg','.h5').replace('images','ground_truth')
+    print("gt_path",gt_path)
     img = Image.open(img_path).convert('RGB')
+    print("open image",img)
+    
     gt_file = h5py.File(gt_path,'r')
+    print("reading h5 files")
     target = np.asarray(gt_file['density'])
+    print("converting into araary",target)
     if train:
         ratio = 0.5
         crop_size = (int(img.size[0]*ratio),int(img.size[1]*ratio))
@@ -33,6 +39,6 @@ def load_data(img_path,train = True):
             target = np.fliplr(target)
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
-    target = cv2.resize(target,(target.shape[1]/8,target.shape[0]/8),interpolation = cv2.INTER_CUBIC)*64
+    target = cv2.resize(target,(target.shape[1]//8,target.shape[0]//8),interpolation = cv2.INTER_CUBIC)*64
 
     return img,target

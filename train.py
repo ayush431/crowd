@@ -1,6 +1,7 @@
 import sys
 import os
 
+
 import warnings
 
 from model import CANNet
@@ -19,6 +20,7 @@ import cv2
 import dataset
 import time
 
+
 parser = argparse.ArgumentParser(description='PyTorch CANNet')
 
 parser.add_argument('train_json', metavar='TRAIN',
@@ -27,6 +29,7 @@ parser.add_argument('val_json', metavar='VAL',
                     help='path to val json')
 
 def main():
+    print("control is at main")
 
     global args,best_prec1
 
@@ -46,18 +49,43 @@ def main():
     with open(args.val_json, 'r') as outfile:
         val_list = json.load(outfile)
 
-    torch.cuda.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     model = CANNet()
 
-    model = model.cuda()
+    # if torch.cuda.is_available():
+    #     print("if")
+    #     device = 'cuda'
+    # else:
+    #     print("else")
+    #     device = 'cpu'
+    # model.to(device)
+    # if torch.cuda.is_available():
+    #     device = torch.device('cuda')
+    # else:
+    #     device = torch.device('cpu')
+    #     print("Device",device)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Device",device)
+   
+        
 
-    criterion = nn.MSELoss(size_average=False).cuda()
+    #model = model.to(device)
+    
+    
+    print("running")
+
+    criterion = nn.MSELoss(size_average=False)
+    print("running after")
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr,
                                     weight_decay=args.decay)
 
     for epoch in range(args.start_epoch, args.epochs):
+        print("train method called",train)
         train(train_list, model, criterion, optimizer, epoch)
         prec1 = validate(val_list, model, criterion)
 
@@ -70,6 +98,7 @@ def main():
         }, is_best)
 
 def train(train_list, model, criterion, optimizer, epoch):
+    print("control at method call")
 
     losses = AverageMeter()
     batch_time = AverageMeter()
@@ -87,39 +116,42 @@ def train(train_list, model, criterion, optimizer, epoch):
                        batch_size=args.batch_size,
                        num_workers=args.workers),
         batch_size=args.batch_size)
+    print("model starts training")
     print('epoch %d, processed %d samples, lr %.10f' % (epoch, epoch * len(train_loader.dataset), args.lr))
 
     model.train()
+    print("model starts training")
     end = time.time()
+    print("end time")
 
-    for i,(img, target)in enumerate(train_loader):
-        data_time.update(time.time() - end)
+    # for i,(img, target)in enumerate(train_loader):
+    #     data_time.update(time.time() - end)
 
-        img = img.cuda()
-        img = Variable(img)
-        output = model(img)[:,0,:,:]
+    
+    #     img = Variable(img)
+    #     output = model(img)[:,0,:,:]
 
-        target = target.type(torch.FloatTensor).cuda()
-        target = Variable(target)
+    #     target = target.type(torch.FloatTensor)
+    #     target = Variable(target)
 
-        loss = criterion(output, target)
+    #     loss = criterion(output, target)
 
-        losses.update(loss.item(), img.size(0))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    #     losses.update(loss.item(), img.size(0))
+    #     optimizer.zero_grad()
+    #     loss.backward()
+    #     optimizer.step()
 
-        batch_time.update(time.time() - end)
-        end = time.time()
+    #     batch_time.update(time.time() - end)
+    #     end = time.time()
 
-        if i % args.print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  .format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
+    #     if i % args.print_freq == 0:
+    #         print('Epoch: [{0}][{1}/{2}]\t'
+    #               'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+    #               'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+    #               'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+    #               .format(
+    #                epoch, i, len(train_loader), batch_time=batch_time,
+    #                data_time=data_time, loss=losses))
 
 def validate(val_list, model, criterion):
     print ('begin val')
@@ -138,12 +170,13 @@ def validate(val_list, model, criterion):
 
     for i,(img, target) in enumerate(val_loader):
         h,w = img.shape[2:4]
-        h_d = h/2
-        w_d = w/2
-        img_1 = Variable(img[:,:,:h_d,:w_d].cuda())
-        img_2 = Variable(img[:,:,:h_d,w_d:].cuda())
-        img_3 = Variable(img[:,:,h_d:,:w_d].cuda())
-        img_4 = Variable(img[:,:,h_d:,w_d:].cuda())
+        h_d = h//2
+        w_d = w//2
+        img_1 = Variable(img[:,:,:h_d,:w_d])
+       # print("image1",img_1)
+        img_2 = Variable(img[:,:,:h_d,w_d:])
+        img_3 = Variable(img[:,:,h_d:,:w_d])
+        img_4 = Variable(img[:,:,h_d:,w_d:])
         density_1 = model(img_1).data.cpu().numpy()
         density_2 = model(img_2).data.cpu().numpy()
         density_3 = model(img_3).data.cpu().numpy()
@@ -177,4 +210,5 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 if __name__ == '__main__':
+    print("iam main i am called")
     main()
